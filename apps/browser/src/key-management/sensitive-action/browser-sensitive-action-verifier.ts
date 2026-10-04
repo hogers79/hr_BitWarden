@@ -22,13 +22,18 @@ export class BrowserSensitiveActionVerifier implements SensitiveActionVerifier {
     private logService: LogService,
   ) {}
 
-  async verify(): Promise<boolean | null> {
+  async isPasskeyAvailable(): Promise<boolean> {
+    const userId = await firstValueFrom(this.accountService.activeAccount$.pipe(getUserId));
+    return await this.webAuthnPrfUnlockService.isPrfUnlockAvailable(userId);
+  }
+
+  async verify(forceCheck = false): Promise<boolean | null> {
     const userId = await firstValueFrom(this.accountService.activeAccount$.pipe(getUserId));
 
     const activatedAt = await firstValueFrom(
       this.stateProvider.getUserState$(SES_ACTIVATED_AT, userId),
     );
-    if (activatedAt != null && Date.now() - activatedAt < SES_DURATION_MS) {
+    if (!forceCheck && activatedAt != null && Date.now() - activatedAt < SES_DURATION_MS) {
       return true;
     }
 

@@ -93,15 +93,16 @@ export class ExtensionLockComponentService implements LockComponentService {
           masterPassword: {
             enabled: userDecryptionOptions?.hasMasterPassword,
           },
+          // Fork patch: unlocking is by master password only. The passkey is reserved for SES.
           pin: {
-            enabled: pinDecryptionAvailable,
+            enabled: false && pinDecryptionAvailable,
           },
           biometrics: {
-            enabled: biometricsStatus === BiometricsStatus.Available,
+            enabled: false && biometricsStatus === BiometricsStatus.Available,
             biometricsStatus: biometricsStatus,
           },
           prf: {
-            enabled: prfUnlockInfo.available,
+            enabled: false && prfUnlockInfo.available,
           },
         };
         return unlockOpts;

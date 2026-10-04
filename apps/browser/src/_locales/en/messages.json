@@ -848,6 +848,27 @@
   "unlockDays30": {
     "message": "1 month"
   },
+  "sensitiveActionsPasskey": {
+    "message": "Sensitive actions passkey"
+  },
+  "sensitiveActionsPasskeyReady": {
+    "message": "A passkey is set up. Windows Hello confirms viewing and copying passwords for one hour."
+  },
+  "sensitiveActionsPasskeyMissing": {
+    "message": "No passkey is set up on this account. The master password is used instead. Add a passkey in the web vault, then return here."
+  },
+  "testPasskey": {
+    "message": "Test passkey"
+  },
+  "addPasskey": {
+    "message": "Add passkey"
+  },
+  "passkeyTestPassed": {
+    "message": "Passkey check passed"
+  },
+  "passkeyTestFailed": {
+    "message": "Passkey check failed or was cancelled"
+  },
   "sessionTimeoutHeader": {
     "message": "Session timeout"
   },

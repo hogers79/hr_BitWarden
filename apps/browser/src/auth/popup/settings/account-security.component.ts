@@ -45,6 +45,7 @@ import {
   CheckboxModule,
   DialogService,
   FormFieldModule,
+  ButtonModule,
   IconButtonModule,
   IconModule,
   ItemModule,
@@ -67,6 +68,7 @@ import {
   NativeMessagingPermissionDialogComponent,
   NativeMessagingPermissionDialogType,
 } from "../../../key-management/shared-unlock/popup/native-messaging-permission-dialog.component";
+import { SensitiveActionVerifier } from "@bitwarden/common/vault/abstractions/sensitive-action-verifier";
 import { BrowserApi } from "../../../platform/browser/browser-api";
 import BrowserPopupUtils from "../../../platform/browser/browser-popup-utils";
 import { PopOutComponent } from "../../../platform/popup/components/pop-out.component";
@@ -86,6 +88,7 @@ import { AuthExtensionRoute } from "../constants/auth-extension-route.constant";
     FormFieldModule,
     FormsModule,
     ReactiveFormsModule,
+    ButtonModule,
     IconButtonModule,
     IconModule,
     ItemModule,
@@ -109,6 +112,9 @@ export class AccountSecurityComponent implements OnInit, OnDestroy {
   showChangeMasterPass = true;
   pinEnabled$: Observable<boolean> = of(true);
   protected readonly loading = signal(true);
+
+  // Fork patch: passkey (Windows Hello) used for Sensitive Enabled State.
+  protected readonly passkeyAvailable = signal(false);
 
   // Fork patch: replaces the upstream session timeout settings.
   protected unlockDayOptions = AUTO_UNLOCK_DAY_OPTIONS.map((value) => ({
@@ -170,6 +176,7 @@ export class AccountSecurityComponent implements OnInit, OnDestroy {
     private dialogService: DialogService,
     private biometricStateService: BiometricStateService,
     private toastService: ToastService,
+    private sensitiveActionVerifier: SensitiveActionVerifier,
     private vaultNudgesService: NudgesService,
     private logService: LogService,
     private phishingDetectionSettingsService: PhishingDetectionSettingsServiceAbstraction,
@@ -223,6 +230,7 @@ export class AccountSecurityComponent implements OnInit, OnDestroy {
       ),
     };
     this.form.patchValue(initialValues, { emitEvent: false });
+    this.passkeyAvailable.set(await this.sensitiveActionVerifier.isPasskeyAvailable());
 
     this.unlockDaysForm.patchValue(
       {
@@ -591,6 +599,25 @@ export class AccountSecurityComponent implements OnInit, OnDestroy {
     if (confirmed) {
       this.messagingService.send("logout", { userId: userId });
     }
+  }
+
+  protected async testPasskey() {
+    const result = await this.sensitiveActionVerifier.verify(true);
+    this.toastService.showToast({
+      variant: result === true ? "success" : "error",
+      message: this.i18nService.t(
+        result === true
+          ? "passkeyTestPassed"
+          : result === null
+            ? "sensitiveActionsPasskeyMissing"
+            : "passkeyTestFailed",
+      ),
+      title: "",
+    });
+  }
+
+  protected async addPasskey() {
+    await BrowserApi.createNewTab("https://vault.bitwarden.com/#/settings/security/password");
   }
 
   ngOnDestroy() {

@@ -6,7 +6,6 @@ import { AccountCryptographicStateService } from "@bitwarden/common/key-manageme
 import { InternalMasterPasswordServiceAbstraction } from "@bitwarden/common/key-management/master-password/abstractions/master-password.service.abstraction";
 import { V2UpgradeTokenStateService } from "@bitwarden/common/key-management/upgrade-token/abstractions/v2-upgrade-token-state.service.abstraction";
 import { RegisterSdkService } from "@bitwarden/common/platform/abstractions/sdk/register-sdk.service";
-import { SES_ACTIVATED_AT } from "@bitwarden/common/key-management/vault-timeout";
 import { asUuid } from "@bitwarden/common/platform/abstractions/sdk/sdk.service";
 import { Ref } from "@bitwarden/common/platform/misc/reference-counting/rc";
 import { USER_EVER_HAD_USER_KEY } from "@bitwarden/common/platform/services/key-state/user-key.state";
@@ -294,14 +293,10 @@ export class DefaultUnlockService implements UnlockService {
     if (await firstValueFrom(this.biometricStateService.biometricUnlockEnabled$(userId))) {
       await this.biometricsService.setBiometricProtectedUnlockKeyForUser(userId, userKey);
     }
-    if (method === UnlockMethod.Prf) {
-      // Fork patch: a passkey unlock is also a passkey check, so it opens SES.
-      await this.stateProvider.setUserState(SES_ACTIVATED_AT, Date.now(), userId);
-    }
     await this.autoUnlockService.setAutoUnlockKey(
       userId,
       userKey,
-      method === UnlockMethod.MasterPassword || method === UnlockMethod.Prf,
+      method === UnlockMethod.MasterPassword,
     );
     await this.stateProvider.setUserState(USER_EVER_HAD_USER_KEY, true, userId);
 

@@ -143,6 +143,28 @@
 
       <bit-section>
         <bit-section-header>
+          <h2 bitTypography="h6">{{ "sensitiveActionsPasskey" | i18n }}</h2>
+        </bit-section-header>
+        <bit-card>
+          <p class="tw-mb-2">
+            {{
+              (passkeyAvailable() ? "sensitiveActionsPasskeyReady" : "sensitiveActionsPasskeyMissing")
+                | i18n
+            }}
+          </p>
+          <div class="tw-flex tw-gap-2">
+            <button type="button" bitButton buttonType="secondary" (click)="testPasskey()">
+              {{ "testPasskey" | i18n }}
+            </button>
+            <button type="button" bitButton buttonType="secondary" (click)="addPasskey()">
+              {{ "addPasskey" | i18n }}
+            </button>
+          </div>
+        </bit-card>
+      </bit-section>
+
+      <bit-section>
+        <bit-section-header>
           <h2 bitTypography="h6">{{ "manageDevices" | i18n }}</h2>
         </bit-section-header>
         <bit-item>
