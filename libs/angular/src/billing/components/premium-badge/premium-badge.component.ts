@@ -8,29 +8,8 @@ import { NotPremiumDirective } from "../../directives/not-premium.directive";
 
 @Component({
   selector: "app-premium-badge",
-  template: `
-    @if (iconOnly()) {
-      <button
-        type="button"
-        buttonType="side-nav"
-        size="xsmall"
-        *appNotPremium
-        bitIconButton="bwi-premium"
-        [label]="'upgradeToPremium' | i18n"
-        (click)="promptForPremium($event)"
-      ></button>
-    } @else {
-      <button
-        type="button"
-        *appNotPremium
-        bit-chip-action
-        startIcon="bwi-premium"
-        [variant]="'accent-primary'"
-        (click)="promptForPremium($event)"
-        [label]="'upgrade' | i18n"
-      ></button>
-    }
-  `,
+  // Fork patch: no premium upsell badge.
+  template: ``,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [I18nPipe, BitIconButtonComponent, ChipActionComponent, NotPremiumDirective],
 })

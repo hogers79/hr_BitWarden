@@ -231,6 +231,8 @@ export class DefaultEnvironmentService implements EnvironmentService {
   }
 
   async setEnvironment(region: Region, urls?: Urls): Promise<Urls> {
+    // Fork patch: bitwarden.com (US) is the only supported server.
+    region = Region.US;
     // Unknown regions are treated as self-hosted
     if (this.getRegionConfig(region) == null) {
       region = Region.SelfHosted;
@@ -284,6 +286,8 @@ export class DefaultEnvironmentService implements EnvironmentService {
    * Helper for building the environment from state. Performs some general sanitization to avoid invalid regions and urls.
    */
   protected buildEnvironment(region: Region, urls: Urls) {
+    // Fork patch: bitwarden.com (US) is the only supported server, whatever is stored.
+    region = Region.US;
     // Unknown regions are treated as self-hosted
     if (this.getRegionConfig(region) == null) {
       region = Region.SelfHosted;

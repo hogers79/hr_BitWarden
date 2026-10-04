@@ -200,7 +200,8 @@ export class VaultComponent implements OnInit, OnDestroy {
     this.showHasItemsVaultSpotlight$,
   ]).pipe(
     map(([showPremiumNudge, showHasItemsNudge]) => {
-      return showPremiumNudge && !showHasItemsNudge && this.premiumUpsellService.showUpsell();
+      // Fork patch: no premium upsell.
+      return false && showPremiumNudge && !showHasItemsNudge && this.premiumUpsellService.showUpsell();
     }),
     shareReplay({ bufferSize: 1, refCount: true }),
   );

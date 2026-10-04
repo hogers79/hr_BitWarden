@@ -14,6 +14,6 @@ export class BrowserPremiumUpgradePromptService implements PremiumUpgradePromptS
   readonly upgradeConfirmed$: Observable<boolean> = EMPTY;
 
   async promptForPremium() {
-    PremiumUpgradeDialogComponent.open(this.dialogService);
+    // Fork patch: no premium upsell dialog.
   }
 }
