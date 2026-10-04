@@ -2,7 +2,9 @@ import { filter, firstValueFrom } from "rxjs";
 
 import { ClientType } from "@bitwarden/client-type";
 import {
-  AUTO_UNLOCK_MAX_AGE_MS,
+  AUTO_UNLOCK_DAYS,
+  AUTO_UNLOCK_DEFAULT_DAYS,
+  MS_PER_DAY,
   AUTO_UNLOCK_PASSWORD_AT,
   VAULT_TIMEOUT,
   VaultTimeoutStringType,
@@ -61,8 +63,11 @@ export class DefaultAutoUnlockService implements AutoUnlockService {
     const passwordAt = await firstValueFrom(
       this.stateProvider.getUserState$(AUTO_UNLOCK_PASSWORD_AT, userId),
     );
+    const days =
+      (await firstValueFrom(this.stateProvider.getUserState$(AUTO_UNLOCK_DAYS, userId))) ??
+      AUTO_UNLOCK_DEFAULT_DAYS;
     // A stored key with no stamp cannot be aged, so fail closed.
-    return passwordAt == null || Date.now() - passwordAt >= AUTO_UNLOCK_MAX_AGE_MS;
+    return passwordAt == null || Date.now() - passwordAt >= days * MS_PER_DAY;
   }
 
   async setAutoUnlockKey(

@@ -127,7 +127,17 @@
         </bit-section-header>
 
         <bit-card>
-          <bit-session-timeout-settings [refreshTimeoutActionSettings]="refreshTimeoutSettings$" />
+          <form [formGroup]="unlockDaysForm">
+            <bit-form-field disableMargin>
+              <bit-label>{{ "stayUnlockedFor" | i18n }}</bit-label>
+              <bit-select formControlName="days">
+                @for (o of unlockDayOptions; track o.value) {
+                  <bit-option [value]="o.value" [label]="o.name"></bit-option>
+                }
+              </bit-select>
+              <bit-hint>{{ "stayUnlockedForHint" | i18n }}</bit-hint>
+            </bit-form-field>
+          </form>
         </bit-card>
       </bit-section>
 

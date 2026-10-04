@@ -47,6 +47,9 @@ import {
 } from "../types/vault-timeout.type";
 
 import {
+  AUTO_UNLOCK_DAY_OPTIONS,
+  AUTO_UNLOCK_DAYS,
+  AUTO_UNLOCK_DEFAULT_DAYS,
   VAULT_TIMEOUT,
   VAULT_TIMEOUT_ACTION,
   VAULT_TIMEOUT_SUPPRESSED_UNTIL,
@@ -212,50 +215,9 @@ export class VaultTimeoutSettingsService implements VaultTimeoutSettingsServiceA
     // if current vault timeout is null, apply the client specific default
     currentVaultTimeout = currentVaultTimeout ?? this.defaultVaultTimeout;
 
-    // If no policy applies, return the current vault timeout
-    if (maxSessionTimeoutPolicyData == null) {
-      return currentVaultTimeout;
-    }
-
-    switch (maxSessionTimeoutPolicyData.type) {
-      case "immediately":
-        return VaultTimeoutNumberType.Immediately;
-      case "custom":
-      case null:
-      case undefined:
-        if (currentVaultTimeout === VaultTimeoutNumberType.Immediately) {
-          return currentVaultTimeout;
-        }
-        if (isVaultTimeoutTypeNumeric(currentVaultTimeout)) {
-          return Math.min(currentVaultTimeout as number, maxSessionTimeoutPolicyData.minutes);
-        }
-        return maxSessionTimeoutPolicyData.minutes;
-      case "onSystemLock":
-        if (
-          currentVaultTimeout === VaultTimeoutStringType.Never ||
-          currentVaultTimeout === VaultTimeoutStringType.OnRestart ||
-          currentVaultTimeout === VaultTimeoutStringType.OnLocked ||
-          currentVaultTimeout === VaultTimeoutStringType.OnIdle ||
-          currentVaultTimeout === VaultTimeoutStringType.OnSleep
-        ) {
-          return VaultTimeoutStringType.OnLocked;
-        }
-        break;
-      case "onAppRestart":
-        if (
-          currentVaultTimeout === VaultTimeoutStringType.Never ||
-          currentVaultTimeout === VaultTimeoutStringType.OnLocked ||
-          currentVaultTimeout === VaultTimeoutStringType.OnIdle ||
-          currentVaultTimeout === VaultTimeoutStringType.OnSleep
-        ) {
-          return VaultTimeoutStringType.OnRestart;
-        }
-        break;
-      case "never":
-        // Policy doesn't override user preference for "never"
-        break;
-    }
-    return currentVaultTimeout;
+    // Fork patch: the vault never locks on a timer. AUTO_UNLOCK_DAYS bounds the session instead,
+    // so neither the stored value nor an organization policy can change the timeout.
+    return VaultTimeoutStringType.Never;
   }
 
   /**
@@ -424,6 +386,19 @@ export class VaultTimeoutSettingsService implements VaultTimeoutSettingsServiceA
 
   async isAutoUnlockExpired(userId: UserId): Promise<boolean> {
     return await this.autoUnlockService.isAutoUnlockExpired(userId);
+  }
+
+  autoUnlockDays$(userId: UserId): Observable<number> {
+    return this.stateProvider
+      .getUserState$(AUTO_UNLOCK_DAYS, userId)
+      .pipe(map((days) => days ?? AUTO_UNLOCK_DEFAULT_DAYS));
+  }
+
+  async setAutoUnlockDays(days: number, userId: UserId): Promise<void> {
+    if (!AUTO_UNLOCK_DAY_OPTIONS.includes(days as (typeof AUTO_UNLOCK_DAY_OPTIONS)[number])) {
+      throw new Error("Unsupported unlock duration.");
+    }
+    await this.stateProvider.setUserState(AUTO_UNLOCK_DAYS, days, userId);
   }
 
   async suppressVaultTimeout(until: number, userId: UserId): Promise<void> {

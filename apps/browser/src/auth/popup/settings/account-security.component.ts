@@ -30,7 +30,10 @@ import { PhishingDetectionSettingsServiceAbstraction } from "@bitwarden/common/d
 import { FeatureFlag } from "@bitwarden/common/enums/feature-flag.enum";
 import { PinServiceAbstraction } from "@bitwarden/common/key-management/pin/pin.service.abstraction";
 import { SharedUnlockSettingsService } from "@bitwarden/common/key-management/shared-unlock";
-import { VaultTimeoutSettingsService } from "@bitwarden/common/key-management/vault-timeout";
+import {
+  AUTO_UNLOCK_DAY_OPTIONS,
+  VaultTimeoutSettingsService,
+} from "@bitwarden/common/key-management/vault-timeout";
 import { ConfigService } from "@bitwarden/common/platform/abstractions/config/config.service";
 import { EnvironmentService } from "@bitwarden/common/platform/abstractions/environment.service";
 import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.service";
@@ -56,7 +59,6 @@ import {
   SpinnerComponent,
 } from "@bitwarden/components";
 import { KeyService, BiometricStateService } from "@bitwarden/key-management";
-import { SessionTimeoutSettingsComponent } from "@bitwarden/key-management-ui";
 // eslint-disable-next-line no-restricted-imports
 import { LegacyCompatKeyService } from "@bitwarden/legacy-crypto";
 import { LockService, LockSource } from "@bitwarden/unlock";
@@ -96,7 +98,6 @@ import { AuthExtensionRoute } from "../constants/auth-extension-route.constant";
     SectionComponent,
     SectionHeaderComponent,
     SelectModule,
-    SessionTimeoutSettingsComponent,
     TypographyModule,
     SwitchComponent,
     CalloutModule,
@@ -108,6 +109,13 @@ export class AccountSecurityComponent implements OnInit, OnDestroy {
   showChangeMasterPass = true;
   pinEnabled$: Observable<boolean> = of(true);
   protected readonly loading = signal(true);
+
+  // Fork patch: replaces the upstream session timeout settings.
+  protected unlockDayOptions = AUTO_UNLOCK_DAY_OPTIONS.map((value) => ({
+    value,
+    name: this.i18nService.t(`unlockDays${value}`),
+  }));
+  protected unlockDaysForm = this.formBuilder.group({ days: [7 as number] });
 
   form = this.formBuilder.group({
     pin: [null as boolean | null],
@@ -215,6 +223,20 @@ export class AccountSecurityComponent implements OnInit, OnDestroy {
       ),
     };
     this.form.patchValue(initialValues, { emitEvent: false });
+
+    this.unlockDaysForm.patchValue(
+      {
+        days: await firstValueFrom(
+          this.vaultTimeoutSettingsService.autoUnlockDays$(activeAccount.id),
+        ),
+      },
+      { emitEvent: false },
+    );
+    this.unlockDaysForm.controls.days.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(async (days) => {
+        await this.vaultTimeoutSettingsService.setAutoUnlockDays(days, activeAccount.id);
+      });
 
     const unlockSharingDisabled = await firstValueFrom(
       this.sharedUnlockSettingsService.unlockSharingDisabled$(activeAccount.id),

@@ -33,7 +33,21 @@ export const VAULT_TIMEOUT = new UserKeyDefinition<VaultTimeout>(
 /**
  * Fork patch: the never-lock key may only live this long after the last master password unlock.
  */
-export const AUTO_UNLOCK_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+export const AUTO_UNLOCK_DEFAULT_DAYS = 7;
+export const AUTO_UNLOCK_DAY_OPTIONS = [1, 2, 7, 14, 30] as const;
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Fork patch: user-chosen number of days the vault stays unlocked (see AUTO_UNLOCK_DAY_OPTIONS).
+ */
+export const AUTO_UNLOCK_DAYS = new UserKeyDefinition<number | null>(
+  VAULT_TIMEOUT_SETTINGS_DISK_LOCAL,
+  "autoUnlockDays",
+  {
+    deserializer: (value) => value,
+    clearOn: [], // persisted on logout
+  },
+);
 
 /**
  * Fork patch: epoch ms of the last master password unlock that (re)armed the never-lock key.

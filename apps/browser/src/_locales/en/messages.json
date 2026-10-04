@@ -827,6 +827,27 @@
   "unlockMethodNeeded": {
     "message": "Set up an unlock method in Settings"
   },
+  "stayUnlockedFor": {
+    "message": "Stay unlocked for"
+  },
+  "stayUnlockedForHint": {
+    "message": "After this long you must unlock again with your passkey or master password, even after restarting the browser or computer."
+  },
+  "unlockDays1": {
+    "message": "1 day"
+  },
+  "unlockDays2": {
+    "message": "2 days"
+  },
+  "unlockDays7": {
+    "message": "1 week"
+  },
+  "unlockDays14": {
+    "message": "2 weeks"
+  },
+  "unlockDays30": {
+    "message": "1 month"
+  },
   "sessionTimeoutHeader": {
     "message": "Session timeout"
   },

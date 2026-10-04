@@ -81,6 +81,13 @@ export abstract class VaultTimeoutSettingsService {
   abstract isAutoUnlockExpired(userId: UserId): Promise<boolean>;
 
   /**
+   * Fork patch: days the vault stays unlocked before the passkey/master password is needed again.
+   */
+  abstract autoUnlockDays$(userId: UserId): Observable<number>;
+
+  abstract setAutoUnlockDays(days: number, userId: UserId): Promise<void>;
+
+  /**
    * Suppress vault timeout until the given epoch timestamp (ms).
    * While suppressed, the vault timeout service will not lock or log out users.
    */

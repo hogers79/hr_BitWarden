@@ -13,6 +13,9 @@ export {
 // Only used by desktop's electron-key.service.spec.ts test
 export {
   VAULT_TIMEOUT,
-  AUTO_UNLOCK_MAX_AGE_MS,
+  AUTO_UNLOCK_DAYS,
+  AUTO_UNLOCK_DAY_OPTIONS,
+  AUTO_UNLOCK_DEFAULT_DAYS,
+  MS_PER_DAY,
   AUTO_UNLOCK_PASSWORD_AT,
 } from "./services/vault-timeout-settings.state";
