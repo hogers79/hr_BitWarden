@@ -112,6 +112,7 @@ import { EnvironmentService } from "@bitwarden/common/platform/abstractions/envi
 import { FileDownloadService } from "@bitwarden/common/platform/abstractions/file-download/file-download.service";
 import { I18nService as I18nServiceAbstraction } from "@bitwarden/common/platform/abstractions/i18n.service";
 import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
+import { SensitiveActionVerifier } from "@bitwarden/common/vault/abstractions/sensitive-action-verifier";
 import {
   MessagingService,
   MessagingService as MessagingServiceAbstraction,
@@ -227,6 +228,7 @@ import { BrowserSessionTimeoutTypeService } from "../../key-management/session-t
 import { ForegroundUnlockService } from "../../key-management/unlock/foreground-unlock.service";
 import { ForegroundVaultTimeoutService } from "../../key-management/vault-timeout/foreground-vault-timeout.service";
 import { BrowserActionsService } from "../../platform/actions/browser-actions.service";
+import { BrowserSensitiveActionVerifier } from "../../key-management/sensitive-action/browser-sensitive-action-verifier";
 import { BrowserApi } from "../../platform/browser/browser-api";
 import { runInsideAngular } from "../../platform/browser/run-inside-angular.operator";
 /* eslint-disable no-restricted-imports */
@@ -699,6 +701,11 @@ const safeProviders: SafeProvider[] = [
       return new UnsupportedSystemNotificationsService();
     },
     deps: [PlatformUtilsService],
+  }),
+  safeProvider({
+    provide: SensitiveActionVerifier,
+    useClass: BrowserSensitiveActionVerifier,
+    deps: [AccountServiceAbstraction, StateProvider, WebAuthnPrfUnlockService, LogService],
   }),
   safeProvider({
     provide: Fido2UserVerificationService,

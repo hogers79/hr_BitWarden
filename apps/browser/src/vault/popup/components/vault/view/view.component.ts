@@ -200,6 +200,10 @@ export class ViewComponent {
             ) {
               return null;
             }
+          } else if (!(await this.passwordRepromptService.passwordRepromptCheck(cipher))) {
+            // Fork patch: opening an item is a sensitive action and requires SES.
+            await this.router.navigate(["/tabs/vault"]);
+            return null;
           }
 
           return cipher;

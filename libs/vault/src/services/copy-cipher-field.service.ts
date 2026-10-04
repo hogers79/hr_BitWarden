@@ -8,7 +8,6 @@ import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.servic
 import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/platform-utils.service";
 import { uuidAsString } from "@bitwarden/common/platform/abstractions/sdk/sdk.service";
 import { TotpService } from "@bitwarden/common/vault/abstractions/totp.service";
-import { CipherRepromptType } from "@bitwarden/common/vault/enums";
 import {
   CipherViewLike,
   CipherViewLikeUtils,
@@ -169,7 +168,7 @@ export class CopyCipherFieldService {
     const action = CopyActions[actionType];
     if (
       !skipReprompt &&
-      cipher.reprompt !== CipherRepromptType.None &&
+      this.passwordRepromptService.isGateRequired(cipher) &&
       action.protected &&
       !(await this.passwordRepromptService.showPasswordPrompt())
     ) {

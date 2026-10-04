@@ -61,6 +61,20 @@ export const AUTO_UNLOCK_PASSWORD_AT = new UserKeyDefinition<number | null>(
   },
 );
 
+/**
+ * Fork patch: Sensitive Enabled State (SES). Epoch ms of the last successful passkey check. SES is
+ * open for SES_DURATION_MS after that, and is cleared on lock or logout.
+ */
+export const SES_DURATION_MS = 60 * 60 * 1000;
+export const SES_ACTIVATED_AT = new UserKeyDefinition<number | null>(
+  VAULT_TIMEOUT_SETTINGS_MEMORY,
+  "sensitiveEnabledStateActivatedAt",
+  {
+    deserializer: (value) => value,
+    clearOn: ["lock", "logout"],
+  },
+);
+
 export const VAULT_TIMEOUT_SUPPRESSED_UNTIL = new UserKeyDefinition<number | null>(
   VAULT_TIMEOUT_SETTINGS_MEMORY,
   "vaultTimeoutSuppressedUntil",

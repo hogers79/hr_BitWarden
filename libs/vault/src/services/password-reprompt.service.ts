@@ -1,7 +1,8 @@
-import { Injectable } from "@angular/core";
+import { Injectable, Optional } from "@angular/core";
 import { firstValueFrom, lastValueFrom } from "rxjs";
 
 import { UserVerificationService } from "@bitwarden/common/auth/abstractions/user-verification/user-verification.service.abstraction";
+import { SensitiveActionVerifier } from "@bitwarden/common/vault/abstractions/sensitive-action-verifier";
 import { Utils } from "@bitwarden/common/platform/misc/utils";
 import { CipherRepromptType } from "@bitwarden/common/vault/enums";
 import { CipherViewLike } from "@bitwarden/common/vault/utils/cipher-view-like-utils";
@@ -18,7 +19,17 @@ export class PasswordRepromptService {
   constructor(
     private dialogService: DialogService,
     private userVerificationService: UserVerificationService,
+    // Fork patch: only provided by the browser extension.
+    @Optional() private sensitiveActionVerifier?: SensitiveActionVerifier,
   ) {}
+
+  /**
+   * Fork patch: with a sensitive action verifier every cipher is gated by SES, not just ciphers
+   * flagged for master password re-prompt.
+   */
+  isGateRequired(cipher: CipherViewLike): boolean {
+    return this.sensitiveActionVerifier != null || cipher.reprompt !== CipherRepromptType.None;
+  }
 
   enabled$ = Utils.asyncToObservable(() => this.userVerificationService.hasMasterPassword());
 
@@ -40,7 +51,7 @@ export class PasswordRepromptService {
   }
 
   async passwordRepromptCheck(cipher: CipherViewLike) {
-    if (cipher.reprompt === CipherRepromptType.None) {
+    if (!this.isGateRequired(cipher)) {
       return true;
     }
 
@@ -48,10 +59,27 @@ export class PasswordRepromptService {
   }
 
   async showPasswordPrompt() {
+    if (this.sensitiveActionVerifier != null) {
+      const verified = await this.sensitiveActionVerifier.verify();
+      if (verified !== null) {
+        return verified;
+      }
+      // No passkey check available: fall back to the master password, which also opens SES.
+      const passed = await this.showMasterPasswordDialog();
+      if (passed) {
+        await this.sensitiveActionVerifier.enable();
+      }
+      return passed;
+    }
+
     if (!(await this.enabled())) {
       return true;
     }
 
+    return await this.showMasterPasswordDialog();
+  }
+
+  private async showMasterPasswordDialog() {
     const dialog = await this.dialogService.open<boolean>(PasswordRepromptComponent, {
       ariaModal: true,
     });

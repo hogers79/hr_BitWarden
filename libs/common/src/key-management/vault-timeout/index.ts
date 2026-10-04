@@ -17,5 +17,7 @@ export {
   AUTO_UNLOCK_DAY_OPTIONS,
   AUTO_UNLOCK_DEFAULT_DAYS,
   MS_PER_DAY,
+  SES_ACTIVATED_AT,
+  SES_DURATION_MS,
   AUTO_UNLOCK_PASSWORD_AT,
 } from "./services/vault-timeout-settings.state";
