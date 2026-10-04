@@ -132,6 +132,7 @@ import { V2UpgradeTokenStateService } from "@bitwarden/common/key-management/upg
 import { DefaultV2UpgradeTokenStateService } from "@bitwarden/common/key-management/upgrade-token/services/default-v2-upgrade-token-state.service";
 import {
   DefaultVaultTimeoutSettingsService,
+  SES_ACTIVATED_AT,
   VaultTimeoutSettingsService,
   VaultTimeoutStringType,
 } from "@bitwarden/common/key-management/vault-timeout";
@@ -1847,6 +1848,21 @@ export default class MainBackground {
 
   async bootstrap() {
     this.containerService.attachToGlobal(self);
+
+    // Fork patch: closing the browser ends the Sensitive Enabled State. Covers a cold browser start
+    // and the last window closing while the browser keeps running in the background.
+    const endSensitiveEnabledState = async () => {
+      const accounts = await firstValueFrom(this.accountService.accounts$);
+      for (const userId of Object.keys(accounts) as UserId[]) {
+        await this.stateProvider.setUserState(SES_ACTIVATED_AT, null, userId);
+      }
+    };
+    BrowserApi.addListener(chrome.runtime.onStartup, () => void endSensitiveEnabledState());
+    BrowserApi.addListener(chrome.windows.onRemoved, async () => {
+      if ((await chrome.windows.getAll()).length === 0) {
+        await endSensitiveEnabledState();
+      }
+    });
 
     // Acquired first so no consumer can observe an empty profile that acquisition would have
     // filled. Pushing before the SDK loads is safe: the profile is mirrored into the SDK handle
