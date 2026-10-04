@@ -404,7 +404,16 @@ describe("ExtensionLockComponentService", () => {
 
       const unlockOptions = await firstValueFrom(service.getAvailableUnlockOptions$(userId));
 
-      expect(unlockOptions).toEqual(expectedOutput);
+      // Fork patch: unlocking is by master password only. PIN, biometrics and passkey are hidden.
+      expect(unlockOptions).toEqual({
+        masterPassword: expectedOutput.masterPassword,
+        pin: { enabled: false },
+        biometrics: {
+          enabled: false,
+          biometricsStatus: expectedOutput.biometrics.biometricsStatus,
+        },
+        prf: { enabled: false },
+      });
       expect(biometricStateService.biometricUnlockEnabled$).toHaveBeenCalledWith(userId);
       if (mockInputs.biometricUnlockEnabled) {
         expect(biometricsService.getBiometricsStatusForUser).toHaveBeenCalledWith(userId);

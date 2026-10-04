@@ -34,10 +34,11 @@ describe("BrowserPremiumUpgradePromptService", () => {
       openSpy.mockRestore();
     });
 
-    it("opens the premium upgrade dialog", async () => {
+    // Fork patch: no premium upsell.
+    it("does not open the premium upgrade dialog", async () => {
       await service.promptForPremium();
 
-      expect(openSpy).toHaveBeenCalledWith(dialogService);
+      expect(openSpy).not.toHaveBeenCalled();
     });
   });
 });

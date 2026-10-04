@@ -96,8 +96,10 @@ describe("ViewComponent", () => {
     driversLicense: {},
   } as unknown as CipherView;
 
+  const passwordRepromptCheck = jest.fn().mockResolvedValue(true);
   const mockPasswordRepromptService = {
     showPasswordPrompt,
+    passwordRepromptCheck,
   };
   const autofillAllowed$ = new BehaviorSubject<boolean>(true);
   const mockVaultPopupAutofillService = {
@@ -285,6 +287,34 @@ describe("ViewComponent", () => {
 
       expect(mockCipherService.cipherViews$).toHaveBeenCalledWith(mockUserId);
       expect(component.cipher).toEqual(mockCipher);
+    }));
+
+    it("requires the sensitive action check before showing the item", fakeAsync(() => {
+      params$.next({ cipherId: "122-333-444" });
+      flush();
+
+      expect(passwordRepromptCheck).toHaveBeenCalledWith(mockCipher);
+      expect(component.cipher).toEqual(mockCipher);
+    }));
+
+    it("returns to the vault and does not show the item when the check is refused", fakeAsync(() => {
+      passwordRepromptCheck.mockResolvedValueOnce(false);
+      component.cipher = undefined;
+
+      params$.next({ cipherId: "122-333-444" });
+      flush();
+
+      expect(mockNavigate).toHaveBeenCalledWith(["/tabs/vault"]);
+      expect(component.cipher).toBeUndefined();
+    }));
+
+    it("does not run the sensitive action check for a load action", fakeAsync(() => {
+      passwordRepromptCheck.mockClear();
+
+      params$.next({ cipherId: "122-333-444", action: "show-autofill-button" });
+      flush();
+
+      expect(passwordRepromptCheck).not.toHaveBeenCalled();
     }));
 
     it("sets the correct header text", fakeAsync(() => {

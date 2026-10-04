@@ -1,3 +1,5 @@
+> **Personal fork:** see [FORK.md](FORK.md) for what differs from upstream, how to build and load the Edge extension, and how to update.
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/bitwarden/brand/main/screenshots/apps-combo-logo.png" alt="Bitwarden" />
 </p>

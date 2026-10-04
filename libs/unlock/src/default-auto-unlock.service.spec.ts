@@ -3,6 +3,9 @@ import { of } from "rxjs";
 
 import { ClientType } from "@bitwarden/client-type";
 import {
+  AUTO_UNLOCK_DAYS,
+  AUTO_UNLOCK_PASSWORD_AT,
+  MS_PER_DAY,
   VAULT_TIMEOUT,
   VaultTimeoutStringType,
 } from "@bitwarden/common/key-management/vault-timeout";
@@ -27,13 +30,20 @@ describe("DefaultAutoUnlockService", () => {
   const platformUtilsService = mock<PlatformUtilsService>();
   const logService = mock<LogService>();
 
+  const userState = new Map<string, unknown>();
+
   let sut: DefaultAutoUnlockService;
 
   beforeEach(() => {
     jest.resetAllMocks();
 
     platformUtilsService.getClientType.mockReturnValue(ClientType.Browser);
-    stateProvider.getUserState$.mockReturnValue(of(VaultTimeoutStringType.Never));
+    userState.clear();
+    userState.set(VAULT_TIMEOUT.key, VaultTimeoutStringType.Never);
+    userState.set(AUTO_UNLOCK_PASSWORD_AT.key, Date.now());
+    stateProvider.getUserState$.mockImplementation((definition) =>
+      of(userState.get(definition.key)),
+    );
     keyService.userKey$.mockReturnValue(of(mockUserKey));
 
     sut = new DefaultAutoUnlockService(
@@ -61,7 +71,7 @@ describe("DefaultAutoUnlockService", () => {
 
       await sut.setAutoUnlockKey(mockUserId, mockUserKey);
 
-      expect(stateProvider.getUserState$).not.toHaveBeenCalled();
+      expect(stateProvider.getUserState$).not.toHaveBeenCalledWith(VAULT_TIMEOUT, mockUserId);
       expect(stateService.setUserKeyAutoUnlock).toHaveBeenCalledWith(mockUserKey.toBase64(), {
         userId: mockUserId,
       });
@@ -150,6 +160,130 @@ describe("DefaultAutoUnlockService", () => {
       );
 
       expect(stateService.setUserKeyAutoUnlock).not.toHaveBeenCalled();
+    });
+  });
+  describe("7 day expiry", () => {
+    const stampedDaysAgo = (days: number) => Date.now() - days * MS_PER_DAY;
+
+    describe("isAutoUnlockExpired", () => {
+      it("is false when no never-lock key is stored", async () => {
+        stateService.getUserKeyAutoUnlock.mockResolvedValue(null);
+        userState.set(AUTO_UNLOCK_PASSWORD_AT.key, stampedDaysAgo(30));
+
+        expect(await sut.isAutoUnlockExpired(mockUserId)).toBe(false);
+      });
+
+      it("fails closed when a key is stored without a timestamp", async () => {
+        stateService.getUserKeyAutoUnlock.mockResolvedValue(mockUserKey.keyB64);
+        userState.set(AUTO_UNLOCK_PASSWORD_AT.key, null);
+
+        expect(await sut.isAutoUnlockExpired(mockUserId)).toBe(true);
+      });
+
+      it.each([
+        [6.9, 7, false],
+        [7, 7, true],
+        [8, 7, true],
+        [0.9, 1, false],
+        [1.1, 1, true],
+        [29, 30, false],
+        [31, 30, true],
+      ])(
+        "with a timestamp %s days old and a %s day window expired is %s",
+        async (age, days, expected) => {
+          stateService.getUserKeyAutoUnlock.mockResolvedValue(mockUserKey.keyB64);
+          userState.set(AUTO_UNLOCK_PASSWORD_AT.key, stampedDaysAgo(age));
+          userState.set(AUTO_UNLOCK_DAYS.key, days);
+
+          expect(await sut.isAutoUnlockExpired(mockUserId)).toBe(expected);
+        },
+      );
+
+      it("defaults to a 7 day window when none is chosen", async () => {
+        stateService.getUserKeyAutoUnlock.mockResolvedValue(mockUserKey.keyB64);
+        userState.set(AUTO_UNLOCK_DAYS.key, null);
+
+        userState.set(AUTO_UNLOCK_PASSWORD_AT.key, stampedDaysAgo(6));
+        expect(await sut.isAutoUnlockExpired(mockUserId)).toBe(false);
+
+        userState.set(AUTO_UNLOCK_PASSWORD_AT.key, stampedDaysAgo(8));
+        expect(await sut.isAutoUnlockExpired(mockUserId)).toBe(true);
+      });
+    });
+
+    describe("getAutoUnlockKey", () => {
+      it("throws away the stored keys and the timestamp when expired", async () => {
+        stateService.getUserKeyAutoUnlock.mockResolvedValue(mockUserKey.keyB64);
+        userState.set(AUTO_UNLOCK_PASSWORD_AT.key, stampedDaysAgo(8));
+
+        const result = await sut.getAutoUnlockKey(mockUserId);
+
+        expect(result).toBeNull();
+        expect(keyService.clearAllStoredUserKeys).toHaveBeenCalledWith(mockUserId);
+        expect(stateProvider.setUserState).toHaveBeenCalledWith(
+          AUTO_UNLOCK_PASSWORD_AT,
+          null,
+          mockUserId,
+        );
+        expect(keyService.validateUserKey).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("setAutoUnlockKey", () => {
+      it("restarts the window on a master password unlock", async () => {
+        userState.set(AUTO_UNLOCK_PASSWORD_AT.key, stampedDaysAgo(3));
+
+        await sut.setAutoUnlockKey(mockUserId, mockUserKey, true);
+
+        expect(stateProvider.setUserState).toHaveBeenCalledWith(
+          AUTO_UNLOCK_PASSWORD_AT,
+          expect.any(Number),
+          mockUserId,
+        );
+        const stamp = stateProvider.setUserState.mock.calls.find(
+          ([definition]) => definition === AUTO_UNLOCK_PASSWORD_AT,
+        )[1] as number;
+        expect(Date.now() - stamp).toBeLessThan(5000);
+      });
+
+      it("keeps the existing timestamp on other unlocks", async () => {
+        userState.set(AUTO_UNLOCK_PASSWORD_AT.key, stampedDaysAgo(3));
+
+        await sut.setAutoUnlockKey(mockUserId, mockUserKey, false);
+
+        expect(stateProvider.setUserState).not.toHaveBeenCalledWith(
+          AUTO_UNLOCK_PASSWORD_AT,
+          expect.anything(),
+          mockUserId,
+        );
+        expect(stateService.setUserKeyAutoUnlock).toHaveBeenCalledWith(mockUserKey.toBase64(), {
+          userId: mockUserId,
+        });
+      });
+
+      it("starts the window when there is no timestamp yet", async () => {
+        userState.set(AUTO_UNLOCK_PASSWORD_AT.key, null);
+
+        await sut.setAutoUnlockKey(mockUserId, mockUserKey, false);
+
+        expect(stateProvider.setUserState).toHaveBeenCalledWith(
+          AUTO_UNLOCK_PASSWORD_AT,
+          expect.any(Number),
+          mockUserId,
+        );
+      });
+
+      it("clears the timestamp when the key is no longer stored", async () => {
+        userState.set(VAULT_TIMEOUT.key, 60);
+
+        await sut.setAutoUnlockKey(mockUserId, mockUserKey, true);
+
+        expect(stateProvider.setUserState).toHaveBeenCalledWith(
+          AUTO_UNLOCK_PASSWORD_AT,
+          null,
+          mockUserId,
+        );
+      });
     });
   });
 });

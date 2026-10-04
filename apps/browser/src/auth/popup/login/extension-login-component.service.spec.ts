@@ -83,6 +83,15 @@ describe("ExtensionLoginComponentService", () => {
     expect(service).toBeTruthy();
   });
 
+  describe("isLoginWithPasskeySupported", () => {
+    // Fork patch: logging in is by master password only. The passkey is reserved for SES.
+    it.each([true, false])("is always false (chromium %s)", (isChromium) => {
+      platformUtilsService.isChromium.mockReturnValue(isChromium);
+
+      expect(service.isLoginWithPasskeySupported()).toBe(false);
+    });
+  });
+
   describe("redirectToSso", () => {
     it("launches SSO browser window", async () => {
       const email = "test@bitwarden.com";

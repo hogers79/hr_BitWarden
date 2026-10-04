@@ -386,5 +386,70 @@ describe("VaultTimeoutService", () => {
 
       expectUserToHaveLocked("1");
     });
+
+    describe("7 day auto unlock expiry", () => {
+      it("locks a never-lock user whose auto unlock has expired, even while a view is focused", async () => {
+        setupAccounts(
+          {
+            1: {
+              authStatus: AuthenticationStatus.Unlocked,
+              isAuthenticated: true,
+              lastActive: new Date().getTime(),
+              vaultTimeout: VaultTimeoutStringType.Never as VaultTimeout,
+            },
+          },
+          { isViewFocused: true },
+        );
+        vaultTimeoutSettingsService.isAutoUnlockExpired.mockResolvedValue(true);
+
+        await vaultTimeoutService.checkVaultTimeout();
+
+        expectUserToHaveLocked("1");
+      });
+
+      it("only locks the users whose auto unlock has expired", async () => {
+        setupAccounts(
+          {
+            1: {
+              authStatus: AuthenticationStatus.Unlocked,
+              isAuthenticated: true,
+              vaultTimeout: VaultTimeoutStringType.Never as VaultTimeout,
+            },
+            2: {
+              authStatus: AuthenticationStatus.Unlocked,
+              isAuthenticated: true,
+              vaultTimeout: VaultTimeoutStringType.Never as VaultTimeout,
+            },
+          },
+          { isViewFocused: false },
+        );
+        vaultTimeoutSettingsService.isAutoUnlockExpired.mockImplementation((userId) =>
+          Promise.resolve(userId === "2"),
+        );
+
+        await vaultTimeoutService.checkVaultTimeout();
+
+        expectNoAction("1");
+        expectUserToHaveLocked("2");
+      });
+
+      it("does not lock a never-lock user whose auto unlock has not expired", async () => {
+        setupAccounts(
+          {
+            1: {
+              authStatus: AuthenticationStatus.Unlocked,
+              isAuthenticated: true,
+              vaultTimeout: VaultTimeoutStringType.Never as VaultTimeout,
+            },
+          },
+          { isViewFocused: false },
+        );
+        vaultTimeoutSettingsService.isAutoUnlockExpired.mockResolvedValue(false);
+
+        await vaultTimeoutService.checkVaultTimeout();
+
+        expectNoAction("1");
+      });
+    });
   });
 });

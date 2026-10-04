@@ -20,6 +20,7 @@ import { PhishingDetectionSettingsServiceAbstraction } from "@bitwarden/common/d
 import { PinServiceAbstraction } from "@bitwarden/common/key-management/pin/pin.service.abstraction";
 import { SharedUnlockSettingsService } from "@bitwarden/common/key-management/shared-unlock";
 import { VaultTimeoutSettingsService } from "@bitwarden/common/key-management/vault-timeout";
+import { SensitiveActionVerifier } from "@bitwarden/common/vault/abstractions/sensitive-action-verifier";
 import { ProfileResponse } from "@bitwarden/common/models/response/profile.response";
 import { ConfigService } from "@bitwarden/common/platform/abstractions/config/config.service";
 import { EnvironmentService } from "@bitwarden/common/platform/abstractions/environment.service";
@@ -86,6 +87,8 @@ describe("AccountSecurityComponent", () => {
   const platformUtilsService = mock<PlatformUtilsService>();
   const vaultNudgesService = mock<NudgesService>();
   const vaultTimeoutSettingsService = mock<VaultTimeoutSettingsService>();
+  const sensitiveActionVerifier = mock<SensitiveActionVerifier>();
+  const toastService = mock<ToastService>();
   const sharedUnlockSettingsService = mock<SharedUnlockSettingsService>();
   const mockI18nService = mock<I18nService>();
 
@@ -132,7 +135,7 @@ describe("AccountSecurityComponent", () => {
         { provide: PolicyService, useValue: policyService },
         { provide: PopupRouterCacheService, useValue: mock<PopupRouterCacheService>() },
         { provide: StateProvider, useValue: mock<StateProvider>() },
-        { provide: ToastService, useValue: mock<ToastService>() },
+        { provide: ToastService, useValue: toastService },
         { provide: UserVerificationService, useValue: mock<UserVerificationService>() },
         { provide: LockService, useValue: lockService },
         {
@@ -142,6 +145,7 @@ describe("AccountSecurityComponent", () => {
         { provide: ConfigService, useValue: configService },
         { provide: SharedUnlockSettingsService, useValue: sharedUnlockSettingsService },
         { provide: VaultTimeoutSettingsService, useValue: vaultTimeoutSettingsService },
+        { provide: SensitiveActionVerifier, useValue: sensitiveActionVerifier },
       ],
     })
       .overrideComponent(AccountSecurityComponent, {
@@ -175,6 +179,10 @@ describe("AccountSecurityComponent", () => {
     sharedUnlockSettingsService.setAllowSharingUnlockStateWithDesktop.mockResolvedValue(undefined);
     sharedUnlockSettingsService.setAllowSharingUnlockStateWithWeb.mockResolvedValue(undefined);
     sharedUnlockSettingsService.unlockSharingDisabled$.mockReturnValue(of(false));
+
+    vaultTimeoutSettingsService.autoUnlockDays$.mockReturnValue(of(7));
+    vaultTimeoutSettingsService.setAutoUnlockDays.mockResolvedValue(undefined);
+    sensitiveActionVerifier.isPasskeyAvailable.mockResolvedValue(true);
 
     policyService.policiesByType$.mockReturnValue(of([null]));
 
@@ -568,6 +576,77 @@ describe("AccountSecurityComponent", () => {
 
       expect(component.form.controls.allowSharingUnlockStateWithDesktop.disabled).toBe(false);
       expect(component.form.controls.allowSharingUnlockStateWithWeb.disabled).toBe(false);
+    });
+  });
+  describe("stay unlocked for", () => {
+    it("loads the saved duration", async () => {
+      expect(component["unlockDaysForm"].controls.days.value).toBe(7);
+    });
+
+    it("offers 1 day, 2 days, 1 week, 2 weeks and 1 month", () => {
+      expect(component["unlockDayOptions"].map((o) => o.value)).toEqual([1, 2, 7, 14, 30]);
+    });
+
+    it("saves the chosen duration for the active user", async () => {
+      component["unlockDaysForm"].controls.days.setValue(14);
+      await Promise.resolve();
+
+      expect(vaultTimeoutSettingsService.setAutoUnlockDays).toHaveBeenCalledWith(14, mockUserId);
+    });
+  });
+
+  describe("sensitive actions passkey", () => {
+    it.each([true, false])("reports passkey availability %s", async (available) => {
+      sensitiveActionVerifier.isPasskeyAvailable.mockResolvedValue(available);
+
+      await component.ngOnInit();
+
+      expect(component["passkeyAvailable"]()).toBe(available);
+    });
+
+    it("shows a success toast when the test passkey check passes", async () => {
+      sensitiveActionVerifier.verify.mockResolvedValue(true);
+
+      await component["testPasskey"]();
+
+      expect(sensitiveActionVerifier.verify).toHaveBeenCalledWith(true);
+      expect(toastService.showToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "success", message: "passkeyTestPassed-used-i18n" }),
+      );
+    });
+
+    it("shows an error toast when the test passkey check fails or is cancelled", async () => {
+      sensitiveActionVerifier.verify.mockResolvedValue(false);
+
+      await component["testPasskey"]();
+
+      expect(toastService.showToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "error", message: "passkeyTestFailed-used-i18n" }),
+      );
+    });
+
+    it("explains that no passkey is set up when the test cannot run", async () => {
+      sensitiveActionVerifier.verify.mockResolvedValue(null);
+
+      await component["testPasskey"]();
+
+      expect(toastService.showToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "error",
+          message: "sensitiveActionsPasskeyMissing-used-i18n",
+        }),
+      );
+    });
+
+    it("opens the web vault passkey settings", async () => {
+      const createNewTab = jest.spyOn(BrowserApi, "createNewTab").mockResolvedValue(undefined);
+
+      await component["addPasskey"]();
+
+      expect(createNewTab).toHaveBeenCalledWith(
+        "https://vault.bitwarden.com/#/settings/security/password",
+      );
+      createNewTab.mockRestore();
     });
   });
 });

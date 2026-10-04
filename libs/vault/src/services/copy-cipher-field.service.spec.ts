@@ -31,6 +31,9 @@ describe("CopyCipherFieldService", () => {
     toastService = mock<ToastService>();
     eventCollectionService = mock<EventCollectionService>();
     passwordRepromptService = mock<PasswordRepromptService>();
+    passwordRepromptService.isGateRequired.mockImplementation(
+      (c) => c.reprompt !== CipherRepromptType.None,
+    );
     totpService = mock<TotpService>();
     i18nService = mock<I18nService>();
     billingAccountProfileStateService = mock<BillingAccountProfileStateService>();
@@ -108,6 +111,27 @@ describe("CopyCipherFieldService", () => {
         expect(result).toBeTruthy();
         expect(passwordRepromptService.showPasswordPrompt).not.toHaveBeenCalled();
         expect(platformUtilsService.copyToClipboard).toHaveBeenCalled();
+      });
+
+      it("should gate a cipher without a reprompt flag when the sensitive gate is always required", async () => {
+        passwordRepromptService.isGateRequired.mockReturnValue(true);
+        passwordRepromptService.showPasswordPrompt.mockResolvedValue(false);
+        cipher.reprompt = CipherRepromptType.None;
+
+        const result = await service.copy(valueToCopy, actionType, cipher, skipReprompt);
+
+        expect(result).toBeFalsy();
+        expect(passwordRepromptService.showPasswordPrompt).toHaveBeenCalled();
+        expect(platformUtilsService.copyToClipboard).not.toHaveBeenCalled();
+      });
+
+      it("should not gate unprotected fields even when the sensitive gate is always required", async () => {
+        passwordRepromptService.isGateRequired.mockReturnValue(true);
+
+        const result = await service.copy(valueToCopy, "username", cipher, skipReprompt);
+
+        expect(result).toBeTruthy();
+        expect(passwordRepromptService.showPasswordPrompt).not.toHaveBeenCalled();
       });
 
       it("should skip password prompt when skipReprompt is true", async () => {

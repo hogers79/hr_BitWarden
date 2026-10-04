@@ -169,6 +169,7 @@ describe("DefaultUnlockService", () => {
       expect(autoUnlockService.setAutoUnlockKey).toHaveBeenCalledWith(
         mockUserId,
         expect.objectContaining({ keyB64: userEncryptionKey.toBase64() }),
+        false,
       );
       expect(stateProvider.setUserState).toHaveBeenCalledWith(
         USER_EVER_HAD_USER_KEY,
@@ -228,6 +229,7 @@ describe("DefaultUnlockService", () => {
       expect(autoUnlockService.setAutoUnlockKey).toHaveBeenCalledWith(
         mockUserId,
         expect.objectContaining({ keyB64: userEncryptionKey.toBase64() }),
+        true,
       );
       expect(stateProvider.setUserState).toHaveBeenCalledWith(
         USER_EVER_HAD_USER_KEY,
@@ -300,6 +302,7 @@ describe("DefaultUnlockService", () => {
       expect(autoUnlockService.setAutoUnlockKey).toHaveBeenCalledWith(
         mockUserId,
         expect.objectContaining({ keyB64: userEncryptionKey.toBase64() }),
+        false,
       );
       expect(stateProvider.setUserState).toHaveBeenCalledWith(
         USER_EVER_HAD_USER_KEY,
