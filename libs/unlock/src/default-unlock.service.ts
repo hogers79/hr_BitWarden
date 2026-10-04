@@ -296,7 +296,7 @@ export class DefaultUnlockService implements UnlockService {
     await this.autoUnlockService.setAutoUnlockKey(
       userId,
       userKey,
-      method === UnlockMethod.MasterPassword,
+      method === UnlockMethod.MasterPassword || method === UnlockMethod.Prf,
     );
     await this.stateProvider.setUserState(USER_EVER_HAD_USER_KEY, true, userId);
 
