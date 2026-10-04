@@ -75,6 +75,12 @@ export abstract class VaultTimeoutSettingsService {
   abstract isVaultTimeoutSuppressed(userId: UserId): Promise<boolean>;
 
   /**
+   * Fork patch: true when the stored never-lock key is older than 7 days since the last master
+   * password unlock and the vault must be locked.
+   */
+  abstract isAutoUnlockExpired(userId: UserId): Promise<boolean>;
+
+  /**
    * Suppress vault timeout until the given epoch timestamp (ms).
    * While suppressed, the vault timeout service will not lock or log out users.
    */

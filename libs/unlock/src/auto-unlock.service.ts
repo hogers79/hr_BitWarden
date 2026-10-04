@@ -21,8 +21,22 @@ export abstract class AutoUnlockService {
    *
    * @param userId - The user's id
    * @param userKey - The user's decrypted user key
+   * @param unlockedWithMasterPassword - Fork patch: true when this unlock was a master password
+   * unlock, which restarts the 7 day never-lock window
    */
-  abstract setAutoUnlockKey(userId: UserId, userKey: SymmetricCryptoKey): Promise<void>;
+  abstract setAutoUnlockKey(
+    userId: UserId,
+    userKey: SymmetricCryptoKey,
+    unlockedWithMasterPassword?: boolean,
+  ): Promise<void>;
+
+  /**
+   * Fork patch: whether the stored never-lock key is older than 7 days since the last master
+   * password unlock. Always false when no never-lock key is stored.
+   *
+   * @param userId - The user's id
+   */
+  abstract isAutoUnlockExpired(userId: UserId): Promise<boolean>;
 
   /**
    * Re-evaluates never-lock storage for an already-unlocked user. Call after changing a setting that

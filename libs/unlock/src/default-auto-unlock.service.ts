@@ -2,6 +2,8 @@ import { filter, firstValueFrom } from "rxjs";
 
 import { ClientType } from "@bitwarden/client-type";
 import {
+  AUTO_UNLOCK_MAX_AGE_MS,
+  AUTO_UNLOCK_PASSWORD_AT,
   VAULT_TIMEOUT,
   VaultTimeoutStringType,
 } from "@bitwarden/common/key-management/vault-timeout";
@@ -32,6 +34,13 @@ export class DefaultAutoUnlockService implements AutoUnlockService {
       return null;
     }
 
+    if (await this.isAutoUnlockExpired(userId)) {
+      this.logService.info("[AutoUnlockService] Never-lock key expired, throwing away stored keys");
+      await this.keyService.clearAllStoredUserKeys(userId);
+      await this.stateProvider.setUserState(AUTO_UNLOCK_PASSWORD_AT, null, userId);
+      return null;
+    }
+
     const autoUnlockKey = new SymmetricCryptoKey(Utils.fromB64ToArray(autoUnlockKeyB64)) as UserKey;
 
     if (!(await this.keyService.validateUserKey(autoUnlockKey, userId))) {
@@ -43,11 +52,35 @@ export class DefaultAutoUnlockService implements AutoUnlockService {
     return autoUnlockKey;
   }
 
-  async setAutoUnlockKey(userId: UserId, userKey: SymmetricCryptoKey): Promise<void> {
+  async isAutoUnlockExpired(userId: UserId): Promise<boolean> {
+    const autoUnlockKeyB64 = await this.stateService.getUserKeyAutoUnlock({ userId: userId });
+    if (autoUnlockKeyB64 == null) {
+      return false;
+    }
+
+    const passwordAt = await firstValueFrom(
+      this.stateProvider.getUserState$(AUTO_UNLOCK_PASSWORD_AT, userId),
+    );
+    // A stored key with no stamp cannot be aged, so fail closed.
+    return passwordAt == null || Date.now() - passwordAt >= AUTO_UNLOCK_MAX_AGE_MS;
+  }
+
+  async setAutoUnlockKey(
+    userId: UserId,
+    userKey: SymmetricCryptoKey,
+    unlockedWithMasterPassword = false,
+  ): Promise<void> {
     if (await this.shouldStoreAutoUnlockKey(userId)) {
+      const passwordAt = await firstValueFrom(
+        this.stateProvider.getUserState$(AUTO_UNLOCK_PASSWORD_AT, userId),
+      );
+      if (unlockedWithMasterPassword || passwordAt == null) {
+        await this.stateProvider.setUserState(AUTO_UNLOCK_PASSWORD_AT, Date.now(), userId);
+      }
       await this.stateService.setUserKeyAutoUnlock(userKey.toBase64(), { userId: userId });
     } else {
       await this.stateService.setUserKeyAutoUnlock(null, { userId: userId });
+      await this.stateProvider.setUserState(AUTO_UNLOCK_PASSWORD_AT, null, userId);
     }
   }
 

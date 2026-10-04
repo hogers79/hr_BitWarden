@@ -293,7 +293,11 @@ export class DefaultUnlockService implements UnlockService {
     if (await firstValueFrom(this.biometricStateService.biometricUnlockEnabled$(userId))) {
       await this.biometricsService.setBiometricProtectedUnlockKeyForUser(userId, userKey);
     }
-    await this.autoUnlockService.setAutoUnlockKey(userId, userKey);
+    await this.autoUnlockService.setAutoUnlockKey(
+      userId,
+      userKey,
+      method === UnlockMethod.MasterPassword,
+    );
     await this.stateProvider.setUserState(USER_EVER_HAD_USER_KEY, true, userId);
 
     await this.runOnUnlockActions(userId, userKey, method);

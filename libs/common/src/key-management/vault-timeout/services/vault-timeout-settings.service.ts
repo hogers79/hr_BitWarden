@@ -422,6 +422,10 @@ export class VaultTimeoutSettingsService implements VaultTimeoutSettingsServiceA
     return await firstValueFrom(this.isVaultTimeoutSuppressed$(userId));
   }
 
+  async isAutoUnlockExpired(userId: UserId): Promise<boolean> {
+    return await this.autoUnlockService.isAutoUnlockExpired(userId);
+  }
+
   async suppressVaultTimeout(until: number, userId: UserId): Promise<void> {
     if (!userId) {
       throw new Error("User id required. Cannot suppress vault timeout.");

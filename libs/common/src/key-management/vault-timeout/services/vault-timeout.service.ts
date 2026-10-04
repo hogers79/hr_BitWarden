@@ -87,6 +87,12 @@ export class VaultTimeoutService implements VaultTimeoutServiceAbstraction {
     activeUserId: string,
     isViewFocused: boolean,
   ): Promise<boolean> {
+    // Fork patch: the never-lock key expires 7 days after the last master password unlock,
+    // regardless of activity or focus.
+    if (await this.vaultTimeoutSettingsService.isAutoUnlockExpired(userId as UserId)) {
+      return true;
+    }
+
     if (isViewFocused && userId === activeUserId) {
       // We know a view is focused and this is the currently active user
       // which means they are likely looking at their vault
