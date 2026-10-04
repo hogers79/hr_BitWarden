@@ -83,6 +83,7 @@ export class ExtensionLoginComponentService
    * https://developer.apple.com/forums/thread/774351
    */
   isLoginWithPasskeySupported(): boolean {
-    return this.platformUtilsService.isChromium();
+    // Fork patch: logging in is by master password only. The passkey is reserved for SES.
+    return false && this.platformUtilsService.isChromium();
   }
 }
