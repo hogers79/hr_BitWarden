@@ -231,8 +231,8 @@ export class VaultListItemsContainerComponent {
     return (cipher: CipherViewLike) => {
       const login = CipherViewLikeUtils.getLogin(cipher);
       const hasUsername = login?.username != null;
-      // Use autofill title when autofill is the primary action
-      const key = this.canAutofill() ? "autofillTitle" : "viewItemTitle";
+      // Fork patch: viewing is always the primary action
+      const key = "viewItemTitle";
       return hasUsername ? `${key}WithField` : key;
     };
   });
@@ -301,7 +301,8 @@ export class VaultListItemsContainerComponent {
   ) {}
 
   onCipherSelect(cipher: PopupCipherViewLike) {
-    return this.canAutofill() ? this.doAutofill(cipher) : this.onViewCipher(cipher);
+    // Fork patch: clicking an item always opens it; only the "Fill" button autofills.
+    return this.onViewCipher(cipher);
   }
 
   /**

@@ -147,6 +147,19 @@ describe("VaultListItemsContainerComponent", () => {
       expect(component.canAutofill()).toBe(true);
     });
 
+    // Fork patch: selecting an item views it; only the Fill button autofills
+    it("should view instead of autofill on select for autofill lists", async () => {
+      fixture.componentRef.setInput("isAutofillList", true);
+      fixture.detectChanges();
+      const doAutofill = jest.spyOn(component, "doAutofill").mockResolvedValue();
+      const onViewCipher = jest.spyOn(component, "onViewCipher").mockResolvedValue();
+
+      await component.onCipherSelect(mockCipher);
+
+      expect(onViewCipher).toHaveBeenCalledWith(mockCipher);
+      expect(doAutofill).not.toHaveBeenCalled();
+    });
+
     it("should not autofill on select for non-autofill list items", () => {
       fixture.componentRef.setInput("isAutofillList", false);
       fixture.detectChanges();
@@ -170,14 +183,15 @@ describe("VaultListItemsContainerComponent", () => {
   });
 
   describe("cipherItemTitleKey", () => {
-    it("should return autofillTitle when canAutofill is true", () => {
+    // Fork patch: viewing is always the primary action, even on autofill lists
+    it("should return viewItemTitle when canAutofill is true", () => {
       fixture.componentRef.setInput("isAutofillList", true);
       fixture.detectChanges();
 
       const titleKeyFn = component.cipherItemTitleKey();
       const result = titleKeyFn(mockCipher);
 
-      expect(result).toBe("autofillTitleWithField");
+      expect(result).toBe("viewItemTitleWithField");
     });
 
     it("should return viewItemTitle when canAutofill is false", () => {
