@@ -1,0 +1,40 @@
+# Fork patch: weekly check for a new upstream Bitwarden browser extension release.
+name: Upstream release check
+
+# If bitwarden/clients has published a browser extension release newer than BASE_VERSION that has
+# not been reported yet, open an issue here (GitHub then emails the owner). Run it by hand from the
+# Actions tab to test. Bump BASE_VERSION when the fork has been updated to a newer upstream.
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Look for a new upstream release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          UPSTREAM: bitwarden/clients
+          BASE_VERSION: "2026.9.3"
+        run: |
+          tag=$(gh release list --repo "$UPSTREAM" --limit 60 --json tagName,isPrerelease \
+            --jq '[.[] | select(.isPrerelease == false and (.tagName | startswith("browser-v")))][0].tagName')
+          [ -n "$tag" ] || exit 0
+          version=${tag#browser-v}
+          newest=$(printf '%s\n%s\n' "$BASE_VERSION" "$version" | sort -V | tail -n 1)
+          if [ "$version" = "$BASE_VERSION" ] || [ "$newest" != "$version" ]; then
+            echo "Fork base $BASE_VERSION is current (upstream $version)."
+            exit 0
+          fi
+          title="Upstream release: $UPSTREAM $tag"
+          existing=$(gh issue list --repo "$REPO" --state all --search "\"$title\" in:title" --json title --jq 'length')
+          if [ "$existing" = "0" ]; then
+            gh issue create --repo "$REPO" --title "$title" \
+              --body "A new release of the $UPSTREAM browser extension is out: https://github.com/$UPSTREAM/releases/tag/$tag. Fork base is $BASE_VERSION. Review what changed, then merge it into the fork and bump BASE_VERSION in .github/workflows/upstream-release-check.yml."
+          fi
