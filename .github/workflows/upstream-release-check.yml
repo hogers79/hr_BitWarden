@@ -3,7 +3,8 @@ name: Upstream release check
 
 # If bitwarden/clients has published a browser extension release newer than BASE_VERSION that has
 # not been reported yet, open an issue here (GitHub then emails the owner). Run it by hand from the
-# Actions tab to test. Bump BASE_VERSION when the fork has been updated to a newer upstream.
+# Actions tab to test. The base version is the version in apps/browser/package.json, so merging a
+# newer upstream (and bumping that value) is what silences the check.
 on:
   schedule:
     - cron: "0 7 * * 1"
@@ -16,13 +17,16 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
       - name: Look for a new upstream release
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           UPSTREAM: bitwarden/clients
-          BASE_VERSION: "2026.9.3"
         run: |
+          BASE_VERSION=$(grep -m1 "\"version\":" apps/browser/package.json | cut -d\" -f4)
           tag=$(gh release list --repo "$UPSTREAM" --limit 60 --json tagName,isPrerelease \
             --jq '[.[] | select(.isPrerelease == false and (.tagName | startswith("browser-v")))][0].tagName')
           [ -n "$tag" ] || exit 0
@@ -36,5 +40,5 @@ jobs:
           existing=$(gh issue list --repo "$REPO" --state all --search "\"$title\" in:title" --json title --jq 'length')
           if [ "$existing" = "0" ]; then
             gh issue create --repo "$REPO" --title "$title" \
-              --body "A new release of the $UPSTREAM browser extension is out: https://github.com/$UPSTREAM/releases/tag/$tag. Fork base is $BASE_VERSION. Review what changed, then merge it into the fork and bump BASE_VERSION in .github/workflows/upstream-release-check.yml."
+              --body "A new release of the $UPSTREAM browser extension is out: https://github.com/$UPSTREAM/releases/tag/$tag. Fork base is $BASE_VERSION. Review what changed, then merge it into the fork and bump the version in apps/browser/package.json."
           fi
